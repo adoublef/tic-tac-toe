@@ -227,9 +227,6 @@ func (c *connHandler) setReadDeadLine(d time.Duration) error {
 }
 
 func (c *connHandler) read() (*wsutil.Message, error) {
-	// p, op, err := wsutil.ReadClientData(c.rwc)
-	// return &wsutil.Message{OpCode: op, Payload: p}, err
-
 	r := wsutil.NewReader(c.rwc, ws.StateServerSide)
 
 	for {
@@ -238,37 +235,37 @@ func (c *connHandler) read() (*wsutil.Message, error) {
 			return nil, fmt.Errorf("next frame: %w", err)
 		}
 
-		if h.OpCode.IsControl() {
-			if err := c.controlHandler(h, r); err != nil {
-				return nil, fmt.Errorf("control handler: %w", err)
-			}
-			continue
-		}
-
-		/*
-			// TODO check if this worth doing
-			if !h.OpCode.IsData() {
-				if h.OpCode.IsControl() {
-					if err := c.controlHandler(h, r); err != nil {
-						return nil, fmt.Errorf("control handler: %w", err)
-					}
-					continue
-				}
-			 	if err := r.Discard(); err != nil {
-			 		return nil, fmt.Errorf("discard: %w", err)
-			 	}
-			 	continue
-			}
-		*/
+		// if h.OpCode.IsControl() {
+		// 	if err := c.controlHandler(h, r); err != nil {
+		// 		return nil, fmt.Errorf("control handler: %w", err)
+		// 	}
+		// 	continue
+		// }
 
 		// where want = ws.OpText|ws.OpBinary
 		// NOTE -- eq: h.OpCode != 0 && h.OpCode != want
-		if want := (ws.OpText | ws.OpBinary); h.OpCode&want == 0 {
+		// if want := (ws.OpText | ws.OpBinary); h.OpCode&want == 0 {
+		// 	if err := r.Discard(); err != nil {
+		// 		return nil, fmt.Errorf("discard: %w", err)
+		// 	}
+		// 	continue
+		// }
+
+		// /*
+		// TODO check if this worth doing
+		if !h.OpCode.IsData() {
+			if h.OpCode.IsControl() {
+				if err := c.controlHandler(h, r); err != nil {
+					return nil, fmt.Errorf("control handler: %w", err)
+				}
+				continue
+			}
 			if err := r.Discard(); err != nil {
 				return nil, fmt.Errorf("discard: %w", err)
 			}
 			continue
 		}
+		// */
 
 		// TODO the custom handler to parse payload could be done here (?)
 
