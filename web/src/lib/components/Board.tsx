@@ -9,6 +9,7 @@ type BoardProps = {
     play: (index: number) => React.MouseEventHandler<HTMLElement>;
     reset: () => void;
     disable: (value: number) => boolean;
+    forfeit: () => Promise<void>;
 };
 
 export default function Board(props: BoardProps) {
@@ -22,8 +23,9 @@ export default function Board(props: BoardProps) {
     );
 }
 
-export function useBoard(url: string) {
-    const { send, message } = useWebsocket<Message>(url, { type: "reset" });
+export function useBoard(boardId: string) {
+    // `${import.meta.env.VITE_API_URI}/games/ws?id=${_id}`
+    const { send, message } = useWebsocket<Message>(`${import.meta.env.VITE_API_URI}/games/ws?id=${boardId}`, { type: "reset" });
 
     const [board, setBoard] = useState<(0 | 1 | 2)[]>([0, 0, 0, 0, 0, 0, 0, 0, 0]);
     const [turn, setTurn] = useState<0 | 1 | 2>(1);
@@ -38,12 +40,29 @@ export function useBoard(url: string) {
 
     const disable = (value: number) => value !== 0 || winner !== 0;
 
+    const forfeit = async () => {
+        send({ type: "bye", payload: "board no longer active" });
+
+        const url = `${import.meta.env.VITE_API_URI}/games/${boardId}`;
+        const response = await fetch(url, {
+            method: "DELETE",
+        });
+
+        if (!response.ok) {
+            console.log("error");
+            return;
+        }
+
+        // This wont run as socket already closed
+        // send({ type: "bye", payload: "board no longer active" });
+    };
+
     // TODO -- cannot get rid of this `useEffect`
     useEffect(() => {
         switch (message?.type) {
             case "hi":
             case "bye":
-                console.log(message);
+                alert(message.payload);
                 break;
             case "move":
                 setBoard(board.map((value, i) => (i === message.payload.index ? message.payload.turn : value)));
@@ -58,7 +77,7 @@ export function useBoard(url: string) {
         }
     }, [message]);
 
-    return { board, play, turn, reset, winner, disable }satisfies BoardProps;
+    return { board, play, turn, reset, winner, disable, forfeit }satisfies BoardProps;
 };
 
 type Message =
