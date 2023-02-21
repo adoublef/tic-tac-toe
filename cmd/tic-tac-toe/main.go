@@ -1,15 +1,29 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	p2pHTTP "tic-tac-toe/internal/p2p"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
 )
+
+var port int
+
+func init() {
+	p, err := strconv.Atoi(os.Getenv("PORT"))
+	if err != nil {
+		p = 8080
+	}
+
+	flag.IntVar(&port, "port", p, "port to listen on")
+}
 
 func run() error {
 	root := chi.NewRouter()
@@ -19,7 +33,7 @@ func run() error {
 	root.Mount("/game", p2pHTTP.New())
 
 	s := &http.Server{
-		Addr:    ":8080",
+		Addr:    fmt.Sprintf(":%d", port),
 		Handler: root,
 	}
 
