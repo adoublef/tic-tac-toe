@@ -2,6 +2,8 @@ package p2p
 
 import (
 	"net/http"
+	"strconv"
+	"sync"
 
 	"tic-tac-toe/pkg/websocket"
 
@@ -25,8 +27,31 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) routes() {
+	var store sync.Map
+
 	s.m.Get("/", s.handleIndex())
-	s.m.Get("/ws", websocket.NewClient(2).ServeHTTP)
+	s.m.Get("/ws", func(w http.ResponseWriter, r *http.Request) {
+		// get search params and make sure its a number
+		// if not, return an error
+		q := r.URL.Query().Get("id")
+		if q == "" {
+			http.Error(w, "id is required", http.StatusBadRequest)
+			return
+		}
+
+		id, err := strconv.Atoi(q)
+		if err != nil {
+			http.Error(w, "id must be a number", http.StatusBadRequest)
+			return
+		}
+
+		client, loaded := store.LoadOrStore(id, websocket.NewClient(2))
+		if !loaded {
+			defer store.Delete(id)
+		}
+
+		client.(*websocket.Client).ServeHTTP(w, r)
+	})
 }
 
 func (s *Service) handleIndex() http.HandlerFunc {
