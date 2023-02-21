@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -17,9 +18,9 @@ import (
 
 const (
 	// Time allowed to write a message to the peer.
-	writeWait = 30 * time.Second
+	writeWait = 10 * time.Second
 	// Time allowed to read the next pong message from the peer.
-	pongWait   = 60 * time.Second
+	pongWait   = 10 * time.Second
 	pingPeriod = (pongWait * 9) / 10
 )
 
@@ -226,8 +227,57 @@ func (c *connHandler) setReadDeadLine(d time.Duration) error {
 }
 
 func (c *connHandler) read() (*wsutil.Message, error) {
-	p, op, err := wsutil.ReadClientData(c.rwc)
-	return &wsutil.Message{OpCode: op, Payload: p}, err
+	// p, op, err := wsutil.ReadClientData(c.rwc)
+	// return &wsutil.Message{OpCode: op, Payload: p}, err
+
+	r := wsutil.NewReader(c.rwc, ws.StateServerSide)
+
+	for {
+		h, err := r.NextFrame()
+		if err != nil {
+			return nil, fmt.Errorf("next frame: %w", err)
+		}
+
+		if h.OpCode.IsControl() {
+			if err := c.controlHandler(h, r); err != nil {
+				return nil, fmt.Errorf("control handler: %w", err)
+			}
+			continue
+		}
+
+		/*
+			// TODO check if this worth doing
+			if !h.OpCode.IsData() {
+				if h.OpCode.IsControl() {
+					if err := c.controlHandler(h, r); err != nil {
+						return nil, fmt.Errorf("control handler: %w", err)
+					}
+					continue
+				}
+			 	if err := r.Discard(); err != nil {
+			 		return nil, fmt.Errorf("discard: %w", err)
+			 	}
+			 	continue
+			}
+		*/
+
+		// where want = ws.OpText|ws.OpBinary
+		// NOTE -- eq: h.OpCode != 0 && h.OpCode != want
+		if want := (ws.OpText | ws.OpBinary); h.OpCode&want == 0 {
+			if err := r.Discard(); err != nil {
+				return nil, fmt.Errorf("discard: %w", err)
+			}
+			continue
+		}
+
+		// TODO the custom handler to parse payload could be done here (?)
+
+		p, err := io.ReadAll(r)
+		if err != nil {
+			return nil, fmt.Errorf("read all: %w", err)
+		}
+		return &wsutil.Message{OpCode: h.OpCode, Payload: p}, nil
+	}
 }
 
 func (c *connHandler) write(msg *wsutil.Message) error {
