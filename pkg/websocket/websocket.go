@@ -109,11 +109,12 @@ func (cli *Client) Close() error {
 	defer func() {
 		log.Print("cli.Close()")
 		// close channels
-		close(cli.register)
-		close(cli.unregister)
-		close(cli.broadcast)
+		// close(cli.register)
+		// close(cli.unregister)
+		// close(cli.broadcast)
 	}()
 
+	// msg :=wsutil.ClosedError{Code: ws.StatusNormalClosure, Reason: "server closed"}
 	cli.broadcast <- &wsutil.Message{OpCode: ws.OpClose, Payload: []byte{}} // broadcast close
 	return nil
 }
@@ -148,7 +149,7 @@ func (cli *Client) listen() {
 			cli.connections[conn] = true
 			cli.lock.Unlock()
 		case conn := <-cli.unregister:
-			conn.debug("unregister channel handler")
+			conn.log("unregister channel handler")
 			delete(cli.connections, conn)
 			close(conn.send)
 		case msg := <-cli.broadcast:
@@ -156,7 +157,7 @@ func (cli *Client) listen() {
 				select {
 				case conn.send <- msg:
 				default:
-					conn.debug("broadcast channel handler: default case")
+					conn.log("broadcast channel handler: default case")
 					close(conn.send)
 					delete(cli.connections, conn)
 				}

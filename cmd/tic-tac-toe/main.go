@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	p2pHTTP "tic-tac-toe/internal/p2p"
+	gamesHTTP "tic-tac-toe/internal/games/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -30,7 +30,7 @@ func run() error {
 	root.Use(middleware.Logger)
 	root.Use(cors.AllowAll().Handler)
 
-	root.Mount("/game", p2pHTTP.New())
+	root.Mount("/games", gamesHTTP.New())
 
 	s := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
