@@ -1,7 +1,7 @@
-import React, { MouseEventHandler, useEffect, useRef, useState } from "react";
-import { useWebsocket } from "../websocket";
+import React, { MouseEventHandler, useState } from "react";
 import Cell, { useCell } from "./Cell";
 
+// Board.tsx
 type BoardProps = {
     board: Value[];
     turn: Value;
@@ -13,58 +13,33 @@ type BoardProps = {
 
 export default function Board(props: BoardProps) {
     return (
-        <section className="board">
+        <section>
             {props.board.map((value, index) => (
                 <Cell onClick={props.play(index)} disabled={props.disable(value)} key={index} {...useCell(value)} />
             ))}
-            <p>current player: {props.turn}</p>
         </section>
     );
 }
 
-export function useBoard(url: string) {
-    const { send, message } = useWebsocket<Message>(url, { type: "reset" });
-
+export function useBoard() {
     const [board, setBoard] = useState<(0 | 1 | 2)[]>([0, 0, 0, 0, 0, 0, 0, 0, 0]);
     const [turn, setTurn] = useState<0 | 1 | 2>(1);
 
     const winner = combinations.reduce<0 | 1 | 2>(evaluate(board), 0);
 
     const play: (index: number) => MouseEventHandler<HTMLButtonElement> = index => {
-        return _ => send({ type: "move", payload: { index, turn } });
+        return _e => {
+            setBoard(board.map((value, i) => (i === index ? turn : value)));
+            setTurn(turn === 1 ? 2 : 1);
+        };
     };
 
-    const reset = () => send({ type: "reset" });
+    const reset = () => { setBoard([0, 0, 0, 0, 0, 0, 0, 0, 0]); setTurn(1); };
 
     const disable = (value: number) => value !== 0 || winner !== 0;
 
-    // TODO -- cannot get rid of this `useEffect`
-    useEffect(() => {
-        switch (message?.type) {
-            case "hi":
-            case "bye":
-                console.log(message);
-                break;
-            case "move":
-                setBoard(board.map((value, i) => (i === message.payload.index ? message.payload.turn : value)));
-                setTurn(message.payload.turn === 1 ? 2 : 1);
-                break;
-            case "reset":
-                setBoard([0, 0, 0, 0, 0, 0, 0, 0, 0]);
-                setTurn(1);
-                break;
-            default:
-            // TODO -- handle error
-        }
-    }, [message]);
-
     return { board, play, turn, reset, winner, disable }satisfies BoardProps;
-};
-
-type Message =
-    | { type: "hi" | "bye"; payload: string; }
-    | { type: "move", payload: { index: number, turn: 0 | 1 | 2; }; }
-    | { type: "reset"; };
+}
 
 const combinations = [
     [0, 1, 2],

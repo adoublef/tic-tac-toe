@@ -1,8 +1,9 @@
-import Board, { useBoard } from "./BoardWS";
+import Board, { useBoard } from "./Board";
 
+type GameProps = { id: string; };
 
-export default function Game() {
-    const state = useBoard(`${import.meta.env.VITE_API_URI}/game/ws`);
+export default function Game(props: GameProps) {
+    const state = useBoard(`${import.meta.env.VITE_API_URI}/game/ws?id=${props.id}`);
 
     // disable reset button if no moves left or game is over
     const gameOver = state.winner === 0 && state.board.includes(0);
