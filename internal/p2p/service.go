@@ -45,10 +45,7 @@ func (s *Service) routes() {
 			return
 		}
 
-		client, loaded := store.LoadOrStore(id, websocket.NewClient(2))
-		if !loaded {
-			defer store.Delete(id)
-		}
+		client, _ := store.LoadOrStore(id, websocket.NewClient(2))
 
 		client.(*websocket.Client).ServeHTTP(w, r)
 	})
