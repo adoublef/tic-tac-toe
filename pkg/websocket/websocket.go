@@ -182,7 +182,7 @@ func (cli *Client) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	conn := &connHandler{
 		rwc:  rwc,
-		send: make(chan *wsutil.Message),
+		send: make(chan *wsutil.Message, 256),
 		log:  log.Println,
 		logF: log.Printf,
 		debug: func(v ...any) {
