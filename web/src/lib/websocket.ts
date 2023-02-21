@@ -1,36 +1,28 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 
-export function useWebsocket<T>(url: string, callback: (message: T) => void, deps = []) {
+export function useWebsocket<T>(url: string, init?: T) {
+    const [message, setMessage] = useState<T | undefined>(init);
     const ws = useRef<WebSocket>();
 
-    const onmessage = useMemo(() => callback, [callback].concat(deps));
-
-    const send = (message: T) => {
-        ws.current?.send(JSON.stringify(message));
-    };
-
     useEffect(() => {
-        const current = new WebSocket(url);
-        {
-            current.addEventListener("open", (e) => {
-                console.log("websocket opened");
-            });
+        const current = new WebSocket(url.replace(/^http/, "ws"));
+        current.onopen = () => {
+            current.send(JSON.stringify({ type: "hi", payload: "websocket opened" }));
+        };
 
-            current.addEventListener("message", (e) =>
-                onmessage(JSON.parse(e.data)));
+        current.onmessage = (e) => {
+            const message: T = JSON.parse(e.data);
+            setMessage(message);
+        };
 
-            current.addEventListener("error", (e) => {
-                console.log("websocket error");
-            });
-
-            current.addEventListener("close", (e) => {
-                console.log("websocket error");
-            });
-        }
         ws.current = current;
 
-        return () => { current.close(); };
-    }, [url, onmessage]);
+        return () => {
+            current.close();
+        };
+    }, [url]);
 
-    return [send] as const;
+    const send = (message: T) => ws.current?.send(JSON.stringify(message));
+
+    return { message, send };
 };
