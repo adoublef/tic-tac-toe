@@ -5,52 +5,27 @@ import (
 	"net/mail"
 	"tic-tac-toe/internal/databases/postgres"
 	"tic-tac-toe/internal/users"
+	"tic-tac-toe/internal/users/repo"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Profile struct {
-	ID       uuid.UUID
-	Email    string
-	Username string
-}
-
 type usersRepo struct {
 	rwc postgres.Conn[users.Profile]
 }
 
-const getProfile = `SELECT id,email,username FROM "profile" WHERE username = $1`
-const getProfileN = `SELECT id,email,username FROM "profile" WHERE username = @username`
-
-type GetProfile struct {
-	Username string
-}
+const getProfile = `SELECT id,email,username FROM "profile" WHERE username = @username`
 
 // GetProfile implements repo.Repo
-func (r *usersRepo) GetProfile(ctx context.Context, args GetProfile) (*users.Profile, error) {
-	// p := Profile{}
-	// err := r.rwc.Conn().QueryRow(ctx, getProfile, args.Username).
-	// 	Scan(&p.ID, &p.Email, &p.Username)
-
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// saved := users.Profile{
-	// 	ID:       p.ID,
-	// 	Email:    &mail.Address{Address: p.Email},
-	// 	Username: p.Username,
-	// }
-	// return &saved, err
-
+func (r *usersRepo) GetProfile(ctx context.Context, args *repo.GetProfileArgs) (*users.Profile, error) {
 	named := pgx.NamedArgs{
 		"username": args.Username,
 	}
 
 	return r.rwc.QueryRowContext(ctx, func(row pgx.Row, p *users.Profile) error {
-		v := Profile{}
+		v := repo.Profile{}
 		err := row.Scan(&v.ID, &v.Email, &v.Username)
 		if err != nil {
 			return err
@@ -61,27 +36,13 @@ func (r *usersRepo) GetProfile(ctx context.Context, args GetProfile) (*users.Pro
 		p.Username = v.Username
 
 		return nil
-	}, getProfileN, named)
+	}, getProfile, named)
 }
 
-const createProfile = `INSERT INTO "profile" (id,email,username) VALUES ($1,$2,$3)`
-const createProfileN = `INSERT INTO "profile" (id,email,username) VALUES (@id,@email,@username)`
-
-type CreateProfile struct {
-	Email    *mail.Address
-	Username string
-}
+const createProfile = `INSERT INTO "profile" (id,email,username) VALUES (@id,@email,@username)`
 
 // CreateProfile implements repo.Repo
-func (r *usersRepo) CreateProfile(ctx context.Context, args CreateProfile) (uuid.UUID, error) {
-	// id := uuid.New()
-
-	// _, err := r.rwc.Conn().Exec(ctx, createProfile, id, args.Email, args.Username)
-	// if err != nil {
-	// 	return uuid.Nil, err
-	// }
-
-	// return id, nil
+func (r *usersRepo) CreateProfile(ctx context.Context, args *repo.CreateProfileArgs) (uuid.UUID, error) {
 	id := uuid.New()
 
 	named := pgx.NamedArgs{
@@ -90,7 +51,7 @@ func (r *usersRepo) CreateProfile(ctx context.Context, args CreateProfile) (uuid
 		"username": args.Username,
 	}
 
-	n, err := r.rwc.ExecContext(ctx, createProfileN, named)
+	n, err := r.rwc.ExecContext(ctx, createProfile, named)
 	if err != nil {
 		return uuid.Nil, err
 	}

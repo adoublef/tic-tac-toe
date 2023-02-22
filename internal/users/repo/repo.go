@@ -2,10 +2,10 @@ package repo
 
 import (
 	"context"
+	"net/mail"
 	"tic-tac-toe/internal/users"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 type Profile struct {
@@ -21,10 +21,21 @@ type Repo interface {
 
 type Writer interface {
 	// CreateProfile creates a new profile.
-	CreateProfile(ctx context.Context, args pgx.QueryRewriter) (*users.Profile, error)
+	CreateProfile(ctx context.Context, args *CreateProfileArgs) (uuid.UUID, error)
 }
 
 type Reader interface {
 	// GetProfile gets a profile by ID.
-	GetProfile(ctx context.Context, args pgx.QueryRewriter) (*users.Profile, error)
+	GetProfile(ctx context.Context, args *GetProfileArgs) (*users.Profile, error)
+}
+
+// CreateProfileArgs is the arguments for creating a new profile.
+type CreateProfileArgs struct {
+	Email    *mail.Address
+	Username string
+}
+
+// GetProfileArgs is the arguments for getting a profile.
+type GetProfileArgs struct {
+	Username string
 }

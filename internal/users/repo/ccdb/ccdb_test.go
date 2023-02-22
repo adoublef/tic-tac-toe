@@ -2,8 +2,10 @@ package ccdb_test
 
 import (
 	"context"
+	"fmt"
 	"net/mail"
 	"testing"
+	"tic-tac-toe/internal/users/repo"
 	"tic-tac-toe/internal/users/repo/ccdb"
 	"tic-tac-toe/pkg/containers"
 
@@ -25,7 +27,7 @@ func TestRepository(t *testing.T) {
 	rwc, err := pgxpool.New(ctx, c.URI+"/testing")
 	is.NoErr(err) // pgxpool should connect
 
-	repo := ccdb.New(rwc)
+	testRepo := ccdb.New(rwc)
 	// TODO -- run migration
 	{
 		const migration = `
@@ -40,28 +42,56 @@ func TestRepository(t *testing.T) {
 	}
 
 	// #1 -- create a new profile with a unique email
-	{
-		e, _ := mail.ParseAddress("adoublef@mail.com")
+	type testcaseA struct {
+		email    string
+		username string
+	}
 
-		args := ccdb.CreateProfile{
-			Email:    e,
-			Username: "adoublef",
-		}
+	tta := []testcaseA{
+		{
+			email:    "adoublef@mail.com",
+			username: "adoublef",
+		},
+		// TODO -- add cases where this should fail
+	}
 
-		created, err := repo.CreateProfile(ctx, args)
-		is.NoErr(err)                // create should run
-		is.True(created != uuid.Nil) // created should not be nil
+	for _, ta := range tta {
+		t.Run(fmt.Sprintf("email=%s,username=%s", ta.email, ta.username), func(t *testing.T) {
+			e, _ := mail.ParseAddress(ta.email)
+
+			args := repo.CreateProfileArgs{
+				Email:    e,
+				Username: ta.username,
+			}
+
+			created, err := testRepo.CreateProfile(ctx, &args)
+			is.NoErr(err)                // create should run
+			is.True(created != uuid.Nil) // created should not be nil
+		})
 	}
 
 	// #2 -- get the profile by username
-	{
-		args := ccdb.GetProfile{
-			Username: "adoublef",
-		}
+	type testcaseB struct {
+		username string
+	}
 
-		found, err := repo.GetProfile(ctx, args)
-		is.NoErr(err)         // get should run
-		is.True(found != nil) // found should not be nil
-		is.Equal(found.Email.Address, "adoublef@mail.com")
+	ttb := []testcaseB{
+		{
+			username: "adoublef",
+		},
+		// TODO -- add cases where this should fail
+	}
+
+	for _, tb := range ttb {
+		t.Run(fmt.Sprintf("username=%s", tb.username), func(t *testing.T) {
+			args := repo.GetProfileArgs{
+				Username: "adoublef",
+			}
+
+			found, err := testRepo.GetProfile(ctx, &args)
+			is.NoErr(err)         // get should run
+			is.True(found != nil) // found should not be nil
+			is.Equal(found.Username, tb.username)
+		})
 	}
 }
