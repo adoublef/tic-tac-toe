@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	gamesHTTP "tic-tac-toe/internal/games/http"
+	usersHTTP "tic-tac-toe/internal/users/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -30,7 +31,8 @@ func run() error {
 	root.Use(middleware.Logger)
 	root.Use(cors.AllowAll().Handler)
 
-	root.Mount("/games", gamesHTTP.New())
+	root.Mount("/v1/users", newUsersService())
+	root.Mount("/v1/games", newGamesService())
 
 	s := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
@@ -39,6 +41,14 @@ func run() error {
 
 	fmt.Printf("Listening on %s\n", s.Addr)
 	return s.ListenAndServe()
+}
+
+func newUsersService() http.Handler {
+	return usersHTTP.New()
+}
+
+func newGamesService() http.Handler {
+	return gamesHTTP.New()
 }
 
 func main() {
